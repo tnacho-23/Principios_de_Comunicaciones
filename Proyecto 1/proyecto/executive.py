@@ -20,6 +20,7 @@ PORT = 8889
 # Se crea el socket y se conecta al servidor.
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((HOST, PORT))
+print("Bienvenido don señor ejecutivo")
 
 reading_thread = threading.Thread(target=leer, args=(s,))
 reading_thread.start()
@@ -31,4 +32,5 @@ for line in sys.stdin:
     if msg == "::exit":
         res = s.recv(1024).decode()
         break
+
 s.close()
