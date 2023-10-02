@@ -155,7 +155,13 @@ def executive(sock, rut):
                 with mutex:
                     nombre = executive_acces[rut]['Nombre']
                 sock.send(f'Login correcto\nBienvenid@ {nombre} '.encode())
+                time.sleep(1)
                 print(f'Admin {nombre} conectado.')
+                sock.send(f'Clientes conectados:'.encode())
+                time.sleep(1)
+                for i in sock_clientes:
+                    sock.send(f'{sock_clientes[i]}'.encode())
+                    time.sleep(1)
 
                 while True:
                     try:
@@ -163,7 +169,7 @@ def executive(sock, rut):
                     except:
                         break
 
-                    if data == "::exit":
+                    if data == ":exit:":
                         sock.send("Adios!".encode())
                         
                         # Se modifican las variables globales usando un mutex.
@@ -172,10 +178,29 @@ def executive(sock, rut):
                         sock.close()
                         print(f'Admin {nombre} desconectado.')
                         return None
+                    
+                    elif data == ":status:":
+                        pass
+
+                    elif data == ":details:":
+                        pass
+
+                    elif data == ":history:":
+                        pass
+
+                    elif data == ":operations:":
+                        pass
+
+                    elif data == ":connect:":
+                        pass 
+
+                    elif data == ":disconnect:":
+                        pass
 
                     else:
                         sock.send('Por favor indique un comando valido.'.encode())
                         time.sleep(1)
+
             else: 
                 sock.send('Contraseña Incorrecta'.encode())
                 sock.send('Ingrese su rut:'.encode())
