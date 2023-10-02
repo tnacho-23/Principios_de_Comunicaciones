@@ -3,10 +3,10 @@ import threading
 import time
 
 sock_clientes = []
-cuentas_dict = {'111-1': {'Nombre': 'Mario', 'Password': 'alagrandelepusecuca', 'Dinero': 100, 'Actividad': []},
-                '222-2': {'Nombre': 'Jorge', 'Password': 'elcurioso', 'Dinero': 200, 'Actividad': []},
-                '333-3': {'Nombre': 'Marcia', 'Password': 'ana', 'Dinero': 100, 'Actividad': []},
-                '444-4': {'Nombre': 'Jorge', 'Password': 'nitales', 'Dinero': 9999999999999, 'Actividad': []}}
+cuentas_dict = {'111-1': {'Nombre': 'Mario', 'Password': 'alagrandelepusecuca', 'Dinero': 100, 'Actividad': [], 'Contactos': []},
+                '222-2': {'Nombre': 'Jorge', 'Password': 'elcurioso', 'Dinero': 200, 'Actividad': ['Transferencia de 500 a 1','Transferencia de 500 a 2','Transferencia de 500 a 3','Transferencia de 500 a 4','Transferencia de 500 a 5','Transferencia de 500 a 6'], 'Contactos': ['333-3']},
+                '333-3': {'Nombre': 'Marcia', 'Password': 'ana', 'Dinero': 100, 'Actividad': [], 'Contactos': []},
+                '444-4': {'Nombre': 'Jorge', 'Password': 'nitales', 'Dinero': 9999999999999, 'Actividad': [], 'Contactos': []}}
 
 sock_executives = []
 executive_acces = {'555-5': {'Nombre': 'InHackeable', 'Password': '1234'}}
@@ -14,7 +14,6 @@ executive_acces = {'555-5': {'Nombre': 'InHackeable', 'Password': '1234'}}
 mutex = threading.Lock()
 
 #Funciones Cliente
-
 def change_pass(sock,rut):
     sock.send(f'Ingresa tu contraseña actual:'.encode())
     inputed_password = sock.recv(1024).decode()
@@ -32,17 +31,43 @@ def change_pass(sock,rut):
     else:
         sock.send(f'Contraseña Incorrecta.\n'.encode())
         change_pass(sock,rut)
+        pass
 
 def trans(sock,rut):
+
+    time.sleep(1)
     pass
 
 def balance(sock,rut):
+    with mutex:
+        saldo = cuentas_dict[rut]['Dinero']
+    sock.send(f'Tu saldo es {saldo}'.encode())
+    print(f'Cliente de RUT {rut} ha consultado su saldo.')
+    time.sleep(1)
     pass
 
+
 def history(sock,rut):
+    sock.send(f'Tu actividad reciente en el portal es:\n'.encode())
+    print(f'Cliente de RUT {rut} ha consultado su actividad reciente.')
+    with mutex:
+        historial = cuentas_dict[rut]['Actividad']
+    if len(historial)<5:
+        for j in historial:
+            sock.send(f'{j}\n'.encode())
+    else:
+        for i in range(-1, -6, -1):
+            this_historial = historial[i]
+            sock.send(f'{this_historial}\n'.encode())
+
+    
+
+    time.sleep(1)
     pass
 
 def contact(sock,rut):
+
+    time.sleep(1)
     pass
 
 def cliente(sock, rut):
@@ -72,19 +97,20 @@ def cliente(sock, rut):
                         change_pass(sock,rut)
 
                     elif data == "2":
-                        trans(rut,sock)
+                        trans(sock,rut)
                     
                     elif data == "3":
-                        balance(rut,sock)
+                        balance(sock,rut)
 
                     elif data == "4":
-                        history(rut,sock)
+                        history(sock,rut)
 
                     elif data == "5":
-                        contact(rut,sock)
+                        contact(sock,rut)
 
                     elif data == "6":
-                        sock.send("Gracias por conectarse al portal del banco de Putaendo".encode())
+                        sock.send("Gracias por conectarte al portal del banco de Putaendo".encode())
+                        time.sleep(1)
                         
                         # Se modifican las variables globales usando un mutex.
                         with mutex:
@@ -96,12 +122,11 @@ def cliente(sock, rut):
                     
 
                     else:
-                        sock.send('Por favor indique un comando valido.'.encode())
+                        sock.send('Por favor indica un comando valido.'.encode())
             else: 
                 sock.send('Contraseña Incorrecta'.encode())
-                sock.send('Ingrese su contraseña:'.encode())
+                sock.send('Ingresa tu contraseña:'.encode())
                 cliente(sock,rut)
-
 
                 
                 return None
@@ -114,6 +139,9 @@ def cliente(sock, rut):
 
         else: 
             sock.send('No te cacho :/\nVuelve a intentarlo o ::exit para salir.'.encode())
+
+
+# Funciones executive
 
 def executive(sock, rut):
     global sock_executives, executive_acces, sock_clientes, cuentas_dict
@@ -147,6 +175,7 @@ def executive(sock, rut):
 
                     else:
                         sock.send('Por favor indique un comando valido.'.encode())
+                        time.sleep(1)
             else: 
                 sock.send('Contraseña Incorrecta'.encode())
                 sock.send('Ingrese su rut:'.encode())
@@ -167,11 +196,11 @@ def executive(sock, rut):
     
 def login(sock):
     global sock_executives, executive_acces, sock_clientes, cuentas_dict
-    conn.send("Escoja una opción \n".encode())
+    conn.send("Escoje una opción \n".encode())
     conn.send("[0] Sign in \n[1] Sign up \n".encode())
     log = sock.recv(1024).decode()
     if log == '0':
-        conn.send("Ingrese su RUT".encode())
+        conn.send("Ingresa tu RUT:".encode())
         rut = sock.recv(1024).decode()
         if rut in executive_acces.keys():
             sock_executives.append(conn)
@@ -196,7 +225,7 @@ def login(sock):
             nombre = sock.recv(1024).decode()
             conn.send("Ingrese una contraseña \n".encode())
             contraseña = sock.recv(1024).decode()
-            cuentas_dict[str(rut)] = {'Nombre': str(nombre), 'Password': str(contraseña), 'Dinero': 0, 'Actividad': []}
+            cuentas_dict[str(rut)] = {'Nombre': str(nombre), 'Password': str(contraseña), 'Dinero': 0, 'Actividad': [], 'Contactos': []}
     
     else: 
         conn.send("Por favor ingresar una opción valida \n".encode())

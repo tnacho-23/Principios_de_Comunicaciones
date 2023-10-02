@@ -2,6 +2,7 @@ import socket
 import sys
 import threading
 
+
 def leer(sock):
     while True:
         try:
