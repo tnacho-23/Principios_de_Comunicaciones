@@ -23,6 +23,7 @@ def change_pass(sock,rut):
         sock.send(f'Ingresa tu nueva contraseña:'.encode())
         new_password = sock.recv(1024).decode()
         cuentas_dict[rut]['Password'] = new_password
+        cuentas_dict[rut]['Actividad'].append('Has cambiado tu contraseña.')
         sock.send(f'Contraseña actualizada.\n'.encode())
         print(f'Cliente de RUT {rut} ha cambiado de contraseña.')
         sock.send(f'Redirigiendo al inicio...\n'.encode())
@@ -34,14 +35,88 @@ def change_pass(sock,rut):
         pass
 
 def trans(sock,rut):
+    with mutex:
+        saldo = cuentas_dict[rut]['Dinero']
+    sock.send(f'Tienes {saldo} disponible para transferir\n'.encode())
+    sock.send(f'Ingresa el rut de la persona a quien quieres transferir'.encode())
+    destinatario = sock.recv(1024).decode()
+    if destinatario in cuentas_dict.keys():
+        if destinatario in cuentas_dict[rut]['Contactos']:
+            sock.send(f'Ingresa el monto a transferir'.encode())
+            monto = sock.recv(1024).decode()
+            if int(monto) > int(saldo):
+                sock.send(f'No posees el dinero suficiente para realizar la operación.'.encode())
+                pass
+            else:
+                sock.send(f'Por favor, confirma la operación ingresando tu contraseña:'.encode())
+                input_pass = sock.recv(1024).decode()
+                with mutex:
+                    real_password = cuentas_dict[rut]['Password']
+                if input_pass == real_password:
+                    my_new_saldo = int(saldo) - int(monto)
+                    cuentas_dict[rut]['Dinero'] = my_new_saldo
 
-    time.sleep(1)
-    pass
+
+                    with mutex:
+                        their_saldo = cuentas_dict[destinatario]['Dinero']
+                    their_new_saldo = int(their_saldo) + int(monto)
+                    cuentas_dict[destinatario]['Dinero'] = their_new_saldo
+                    with mutex:
+                        their_name= cuentas_dict[destinatario]['Nombre']
+                    sock.send(f'Has hecho una transferencia de {monto} a {their_name}'.encode())
+                    cuentas_dict[rut]['Actividad'].append(f'Has hecho una transferencia de {monto} a {their_name}')
+                    pass
+                else:
+                    sock.send(f'Contraseña Incorrecta'.encode())
+                    trans(sock,rut)
+        else:
+            sock.send(f'Es la primera vez que le transfieres a esta persona. \nPor esta vez, el monto a transferir no puede superar los 5 pesos.\n'.encode())
+            sock.send(f'Ingresa el monto a transferir:'.encode())
+            monto = sock.recv(1024).decode()
+            if int(monto) > int(saldo):
+                sock.send(f'No posees el dinero suficiente para realizar la operación.'.encode())
+                pass
+            if int(monto) > 5:
+                sock.send(f'No puedes realizar esta operación'.encode())
+            else:
+                sock.send(f'Por favor, confirma la operación ingresando tu contraseña:'.encode())
+                input_pass = sock.recv(1024).decode()
+                with mutex:
+                    real_password = cuentas_dict[rut]['Password']
+                if input_pass == real_password:
+                    cuentas_dict[rut]['Contactos'].append(destinatario)
+                    my_new_saldo = int(saldo) - int(monto)
+                    cuentas_dict[rut]['Dinero'] = my_new_saldo
+                    with mutex:
+                        their_saldo = cuentas_dict[destinatario]['Dinero']
+                    their_new_saldo = int(their_saldo) + int(monto)
+                    cuentas_dict[destinatario]['Dinero'] = their_new_saldo
+                    with mutex:
+                        their_name= cuentas_dict[destinatario]['Nombre']
+                    sock.send(f'Has hecho una transferencia de {monto} a {their_name}'.encode())
+                    cuentas_dict[rut]['Actividad'].append(f'Has hecho una transferencia de {monto} a {their_name}')
+                    time.sleep(1)
+                    pass
+                else:
+                    sock.send(f'Contraseña Incorrecta'.encode())
+                    trans(sock,rut)
+                    
+        
+        pass
+    else: 
+        sock.send(f'No existen registros de ese cliente en nuestra base de datos. \n ¿Qué quieres hacer? \n[0] Volver a intentar.\n[1] Ir al inicio.'.encode())
+        try_again = sock.recv(1024).decode()
+        if try_again == '0':
+            trans(sock,rut)
+        elif try_again == '1':
+            pass
+        
 
 def balance(sock,rut):
     with mutex:
         saldo = cuentas_dict[rut]['Dinero']
     sock.send(f'Tu saldo es {saldo}'.encode())
+    cuentas_dict[rut]['Actividad'].append('Has consultado tu saldo.')
     print(f'Cliente de RUT {rut} ha consultado su saldo.')
     time.sleep(1)
     pass
@@ -66,6 +141,7 @@ def history(sock,rut):
     pass
 
 def contact(sock,rut):
+    cuentas_dict[rut]['Actividad'].append('Has solicitado contacto con un ejecutivo.')
 
     time.sleep(1)
     pass
