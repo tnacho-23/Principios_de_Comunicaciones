@@ -11,6 +11,8 @@ cuentas_dict = {'111-1': {'Nombre': 'Mario', 'Password': 'alagrandelepusecuca', 
 sock_executives = []
 executive_acces = {'555-5': {'Nombre': 'InHackeable', 'Password': '1234'}}
 
+solicitudes = [] # Aquí se guardan los ruts de quienes quieren acceder a un ejecutivo
+
 mutex = threading.Lock()
 
 #Funciones Cliente
@@ -144,6 +146,16 @@ def contact(sock,rut):
     cuentas_dict[rut]['Actividad'].append('Has solicitado contacto con un ejecutivo.')
 
     time.sleep(1)
+    with mutex:
+        solicitudes.append(rut)
+        if len(sock_executives) == 0:
+            t_espera = len(solicitudes) 
+            sock.send(f'En estos momentos no hay ejecutivos que puedan ayudarle'.encode())
+            time.sleep(1)
+        else: 
+            t_espera = int((len(solicitudes) / len(sock_executives)) * 1)
+            sock.send(f'Será redirigid@ con nuestros ejecutivos, el tiempo de espera es de {t_espera} minutos'.encode())
+            time.sleep(1)
     pass
 
 def cliente(sock, rut):
@@ -190,7 +202,9 @@ def cliente(sock, rut):
                         
                         # Se modifican las variables globales usando un mutex.
                         with mutex:
-                            sock_clientes.remove(sock)
+                            for cliente in sock_clientes:
+                                if cliente[0] == rut:
+                                    sock_clientes.remove(cliente)
                         sock.close()
                         print(f'Cliente de RUT {rut} desconectado.')
                         return None
@@ -209,7 +223,9 @@ def cliente(sock, rut):
 
         elif rut == '::exit':
             with mutex:
-                sock_clientes.remove(sock)
+                for cliente in sock_clientes:
+                    if cliente[0] == rut:
+                        sock_clientes.remove(cliente)
             sock.close()
             return None
 
@@ -219,11 +235,62 @@ def cliente(sock, rut):
 
 # Funciones executive
 
+def status(sock, rut):
+    sock.send(f'Clientes conectados:'.encode())
+    time.sleep(1)
+
+    sock.send(f'Hay {len(sock_clientes)} conecatados'.encode())
+    time.sleep(1)
+
+    for i in range(len(sock_clientes)):
+
+        rut = (sock_clientes[i])[0]
+        port = ((sock_clientes[i])[1]).getpeername()
+
+        sock.send(f'Cliente: {rut} {cuentas_dict[rut]["Nombre"]} conectado'.encode())
+        time.sleep(1)
+        # sock.send(f'En el puerto: {((sock_clientes[i])[1]).getpeername()}'.encode())
+        # time.sleep(1)
+
+    if len(solicitudes) == 0:
+        sock.send(f'No hay clientes esperando a un ejecutivo.'.encode())
+        time.sleep(1)
+
+    else: 
+        for i in range(len(solicitudes)):
+            rut = solicitudes[i]
+            sock.send(f'Cliente {cuentas_dict[rut]["Nombre"]} esperando a un ejecutivo.'.encode())
+            time.sleep(1)
+
+    time.sleep(1)
+    pass
+
+def details(sock, rut): 
+    sock.send(f'Aqui tienes los clientes conectados y su ultima acción:'.encode())
+    time.sleep(1)
+    
+    for i in range(len(sock_clientes)):
+
+        rut = (sock_clientes[i])[0]
+        actividad = cuentas_dict[rut]["Actividad"]
+        nombre = cuentas_dict[rut]["Nombre"]
+        if len(actividad) == 0:
+            sock.send(f'Cliente {rut} {nombre}, no a iniciado actividad'.encode())  
+            time.sleep(1)
+
+        else:  
+            sock.send(f'Cliente {rut} {nombre}, su ultima acción fue: {actividad[-1]}'.encode())
+        time.sleep(1)
+        
+def history(sock, rut):
+    sock.send(f'El historial del cliente es:'.encode())
+    time.sleep(1)
+
 def executive(sock, rut):
     global sock_executives, executive_acces, sock_clientes, cuentas_dict
     while True:
         if rut in executive_acces.keys():
-            sock.send(f'Ingresa tu contraseña:'.encode())
+            
             inputed_password = sock.recv(1024).decode()
             with mutex:
                 real_password = executive_acces[rut]['Password']
@@ -233,12 +300,7 @@ def executive(sock, rut):
                 sock.send(f'Login correcto\nBienvenid@ {nombre} '.encode())
                 time.sleep(1)
                 print(f'Admin {nombre} conectado.')
-                sock.send(f'Clientes conectados:'.encode())
-                time.sleep(1)
-                for i in sock_clientes:
-                    sock.send(f'{sock_clientes[i]}'.encode())
-                    time.sleep(1)
-
+                
                 while True:
                     try:
                         data = sock.recv(1024).decode()
@@ -250,28 +312,39 @@ def executive(sock, rut):
                         
                         # Se modifican las variables globales usando un mutex.
                         with mutex:
-                            sock_executives.remove(sock)
+                            for ejecutivo in sock_executives:
+                                if ejecutivo[0] == rut:
+                                    sock_executives.remove(ejecutivo)
                         sock.close()
                         print(f'Admin {nombre} desconectado.')
                         return None
-                    
+
                     elif data == ":status:":
-                        pass
+                            status(sock, rut)
 
                     elif data == ":details:":
-                        pass
-
-                    elif data == ":history:":
-                        pass
-
-                    elif data == ":operations:":
-                        pass
-
+                            details(sock, rut)
+                    
                     elif data == ":connect:":
-                        pass 
+                        rut_cliente = solicitudes[0]
+                        for cliente in sock_clientes:
+                            if cliente[0] == rut_cliente:
+                                cliente_conn = cliente[1]  
+                                cliente_conn.send('Usted se a conectado con el ejecutiv@ {executive_acces[rut]["Nombre"]}'.encode())
+                                time.sleep(1)
+                    
+                        if data == ":history:":
+                            pass
 
-                    elif data == ":disconnect:":
-                        pass
+                        elif data == ":operations:":
+                            pass
+
+                        elif data == ":disconnect:":
+                            pass
+                        
+                        else:
+                            sock.send('Por favor indique un comando valido.'.encode())
+                            time.sleep(1)
 
                     else:
                         sock.send('Por favor indique un comando valido.'.encode())
@@ -280,7 +353,7 @@ def executive(sock, rut):
             else: 
                 sock.send('Contraseña Incorrecta'.encode())
                 sock.send('Ingrese su rut:'.encode())
-                cliente(sock)
+                executive(sock)
 
 
                 
@@ -288,7 +361,9 @@ def executive(sock, rut):
 
         elif rut == '::exit':
             with mutex:
-                sock_clientes.remove(sock)
+                for ejecutivo in sock_executives:
+                    if ejecutivo[0] == rut:
+                        sock_executives.remove(ejecutivo)
             sock.close()
             return None
 
@@ -304,12 +379,12 @@ def login(sock):
         conn.send("Ingresa tu RUT:".encode())
         rut = sock.recv(1024).decode()
         if rut in executive_acces.keys():
-            sock_executives.append(conn)
+            sock_executives.append([rut, conn])                     # Sabemos quien y donde esta conectado
             sock.send(f'Ingresa tu contraseña:'.encode())
             return executive(sock, rut)
         elif rut in cuentas_dict.keys():
-            sock_clientes.append(conn)
-            sock.send(f'Ingresa tu contraseña:'.encode())
+            sock_clientes.append([rut, conn])                        # Sabemos quien y donde esta conectado
+            sock.send(f'Ingresa tu contraseña:'.encode())       
             return cliente(sock, rut)
         else:
             conn.send("No se encuentra registrado \n".encode())
@@ -356,6 +431,7 @@ while True:
         client_thread.start()
     
     except KeyboardInterrupt:
+        s.close()
         break
 
     
