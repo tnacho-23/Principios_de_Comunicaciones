@@ -12,6 +12,7 @@ sock_executives = []
 executive_acces = {'555-5': {'Nombre': 'InHackeable', 'Password': '1234'}}
 
 solicitudes = [] # Aquí se guardan los ruts de quienes quieren acceder a un ejecutivo
+ejecutivo_cliente = [] # Aquí se guardan los ejecutivos que no esten hablando con algun cliente
 
 mutex = threading.Lock()
 
@@ -142,19 +143,46 @@ def history(sock,rut):
     time.sleep(1)
     pass
 
-def contact(sock,rut):
-    cuentas_dict[rut]['Actividad'].append('Has solicitado contacto con un ejecutivo.')
+def contact(sock_ejecutivo, sock_cliente, rut_cliente):
 
-    time.sleep(1)
-    with mutex:
-        solicitudes.append(rut)
-        if len(sock_executives) == 0:
-            t_espera = len(solicitudes) 
-            sock.send(f'En estos momentos no hay ejecutivos que puedan ayudarle'.encode())
+    nombre_cliente = cuentas_dict[rut_cliente]["Nombre"] 
+    conectado = True
+
+    while conectado:
+        
+        res_ejecutive = sock_ejecutivo.recv(1024).decode()
+        
+        if res_ejecutive == ":history:":
+            sock_ejecutivo.send(f'El historial del cliente {nombre_cliente} es:'.encode())
             time.sleep(1)
-        else: 
-            t_espera = int((len(solicitudes) / len(sock_executives)) * 1)
-            sock.send(f'Será redirigid@ con nuestros ejecutivos, el tiempo de espera es de {t_espera} minutos'.encode())
+           
+            historial = cuentas_dict[rut_cliente]['Actividad']
+            
+            for j in historial:
+                sock_ejecutivo.send(f'{j}\n'.encode())
+                time.sleep(1)
+
+        elif res_ejecutive == ":operations:":
+            sock_cliente.send(f'Su historial es:'.encode())
+            time.sleep(1)
+            
+            historial = cuentas_dict[rut_cliente]["Actividad"]
+            
+            for j in historial:
+                sock_cliente.send(f'{j}\n'.encode())
+                time.sleep(1)
+
+        elif res_ejecutive == ":disconnect:":
+            conectado = False
+            for conexion in ejecutivo_cliente:
+                if rut_cliente in conexion:
+                    ejecutivo_cliente.remove(conexion)
+        
+        else:
+            # res_client = sock_cliente.recv(1024).decode()
+            # print(res_client)
+            # sock_ejecutivo.send(res_client.encode())
+            sock_cliente.send(res_ejecutive.encode())
             time.sleep(1)
     pass
 
@@ -194,8 +222,29 @@ def cliente(sock, rut):
                         history(sock,rut)
 
                     elif data == "5":
-                        contact(sock,rut)
-
+                        cuentas_dict[rut]['Actividad'].append('Has solicitado contacto con un ejecutivo.')
+                        solicitudes.append(rut)
+                        if len(sock_executives) == 0:
+                            sock.send(f'En estos momentos no hay ejecutivos que puedan ayudarle'.encode())
+                            time.sleep(1) 
+                        else:
+                            while rut in solicitudes:
+                                t_espera = int((len(solicitudes) / len(sock_executives)) * 1)
+                                sock.send(f'Será redirigid@ con nuestros ejecutivos, el tiempo de espera es de {t_espera} minutos'.encode())
+                                time.sleep(5)
+                            
+                            
+                            for conexion in ejecutivo_cliente:
+                                if rut == conexion[1]:
+                                    rut_ejecutivo = conexion[0]
+                                    parejita = conexion
+                                    for ejecutivo in sock_executives:
+                                        if rut_ejecutivo == ejecutivo[0]:
+                                            conn_ejecutivo = ejecutivo[1]
+                                            while parejita in ejecutivo_cliente:
+                                                res_client = sock.recv(1024).decode()
+                                                conn_ejecutivo.send(res_client.encode())
+                                            pass
                     elif data == "6":
                         sock.send("Gracias por conectarte al portal del banco de Putaendo".encode())
                         time.sleep(1)
@@ -274,6 +323,7 @@ def details(sock, rut):
         rut = (sock_clientes[i])[0]
         actividad = cuentas_dict[rut]["Actividad"]
         nombre = cuentas_dict[rut]["Nombre"]
+        
         if len(actividad) == 0:
             sock.send(f'Cliente {rut} {nombre}, no a iniciado actividad'.encode())  
             time.sleep(1)
@@ -326,25 +376,21 @@ def executive(sock, rut):
                             details(sock, rut)
                     
                     elif data == ":connect:":
-                        rut_cliente = solicitudes[0]
-                        for cliente in sock_clientes:
-                            if cliente[0] == rut_cliente:
-                                cliente_conn = cliente[1]  
-                                cliente_conn.send('Usted se a conectado con el ejecutiv@ {executive_acces[rut]["Nombre"]}'.encode())
-                                time.sleep(1)
-                    
-                        if data == ":history:":
-                            pass
-
-                        elif data == ":operations:":
-                            pass
-
-                        elif data == ":disconnect:":
-                            pass
-                        
+                        if len(solicitudes) !=0: 
+                            rut_cliente = solicitudes[0]
+                            solicitudes.pop(0)
+                            ejecutivo_cliente.append((rut, rut_cliente))
+                            for cliente in sock_clientes:
+                                if cliente[0] == rut_cliente:
+                                    cliente_conn = cliente[1]
+                                    nombre_cliente = cuentas_dict[rut_cliente]["Nombre"] 
+                                    cliente_conn.send(f'Usted se a conectado con el ejecutiv@ {executive_acces[rut]["Nombre"]}'.encode())
+                                    contact(sock, cliente_conn, rut_cliente)
+                                    
                         else:
-                            sock.send('Por favor indique un comando valido.'.encode())
+                            sock.send('No hay clientes esperando.'.encode())
                             time.sleep(1)
+                            
 
                     else:
                         sock.send('Por favor indique un comando valido.'.encode())
