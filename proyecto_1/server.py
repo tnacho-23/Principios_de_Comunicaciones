@@ -84,8 +84,8 @@ def change_pass_cli(sock,rut):
         pass
 
 def trans_cli(sock,rut):
-    with mutex:
-        saldo = cuentas_dict[rut]['Dinero']
+    #with mutex:
+    saldo = cuentas_dict[rut]['Dinero']
     sock.send(f'Tienes {saldo} disponible para transferir\n'.encode())
     sock.send(f'Ingresa el rut de la persona a quien quieres transferir'.encode())
     destinatario = sock.recv(1024).decode()
@@ -95,7 +95,8 @@ def trans_cli(sock,rut):
             monto = sock.recv(1024).decode()
             if int(monto) > int(saldo):
                 sock.send(f'No posees el dinero suficiente para realizar la operación.'.encode())
-                pass
+                sock.send(f'Por favor, vuelve a ingresar tu contraseña'.encode())
+                cliente(sock,rut)
             else:
                 sock.send(f'Por favor, confirma la operación ingresando tu contraseña:'.encode())
                 input_pass = sock.recv(1024).decode()
@@ -124,7 +125,8 @@ def trans_cli(sock,rut):
             monto = sock.recv(1024).decode()
             if int(monto) > int(saldo):
                 sock.send(f'No posees el dinero suficiente para realizar la operación.'.encode())
-                pass
+                sock.send(f'Por favor, vuelve a ingresar tu contraseña'.encode())
+                cliente(sock,rut)
             if int(monto) > 5:
                 sock.send(f'No puedes realizar esta operación'.encode())
             else:
@@ -453,6 +455,9 @@ def login(sock):
             conn.send("Ingrese una contraseña \n".encode())
             contraseña = sock.recv(1024).decode()
             cuentas_dict[str(rut)] = {'Nombre': str(nombre), 'Password': str(contraseña), 'Dinero': 0, 'Actividad': [], 'Contactos': []}
+            conn.send("Cuenta creada \n".encode())
+            time.sleep(1)
+            return login(sock)
     
     else: 
         conn.send("Por favor ingresar una opción valida \n".encode())
