@@ -9,7 +9,9 @@ cuentas_dict = {'111-1': {'Nombre': 'Mario', 'Password': 'alagrandelepusecuca', 
                 '444-4': {'Nombre': 'Jorge', 'Password': 'nitales', 'Dinero': 9999999999999, 'Actividad': [], 'Contactos': []}}
 
 sock_executives = []
-executive_acces = {'555-5': {'Nombre': 'InHackeable', 'Password': '1234'}}
+executive_acces = {'555-5': {'Nombre': 'InHackeable', 'Password': '1234'},
+                    '666-6': {'Nombre': 'InHackeable2', 'Password': '1234'},
+                    '888-8': {'Nombre': 'InHackeable3', 'Password': '1234'}}
 
 solicitudes = [] # Aquí se guardan los ruts de quienes quieren acceder a un ejecutivo
 ejecutivo_cliente = [] # Aquí se guardan los ejecutivos que no esten hablando con algun cliente
@@ -18,9 +20,11 @@ mutex = threading.Lock()
 
 #Funciones comunes
 
-def contact(sock_ejecutivo, sock_cliente, rut_cliente):
+def contact(sock_ejecutivo, rut_ejecutivo, sock_cliente, rut_cliente):
 
     nombre_cliente = cuentas_dict[rut_cliente]["Nombre"] 
+    nombre_ejecutivo = executive_acces[rut_ejecutivo]["Nombre"] 
+    print(f'Cliente {nombre_cliente} se conecto con ejecutivo {nombre_ejecutivo}')
     conectado = True
 
     while conectado:
@@ -392,7 +396,7 @@ def executive(sock, rut):
                                     cliente_conn = cliente[1]
                                     nombre_cliente = cuentas_dict[rut_cliente]["Nombre"] 
                                     cliente_conn.send(f'Usted se a conectado con el ejecutiv@ {executive_acces[rut]["Nombre"]}'.encode())
-                                    contact(sock, cliente_conn, rut_cliente)
+                                    contact(sock, rut, cliente_conn, rut_cliente)
                                     
                         else:
                             sock.send('No hay clientes esperando.'.encode())
