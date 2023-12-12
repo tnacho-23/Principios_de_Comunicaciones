@@ -111,7 +111,7 @@ for i = 1:length(mensaje)
     vector_mensaje(i) = mensaje(i);
 end
 
-
+largo_mensaje = length(mensaje);
 
 t_str=0:1/f_muestreo:m_pixel/f_muestreo-1/f_muestreo;
 s_str = [];
