@@ -1,9 +1,9 @@
-f_muestreo = 40000;
+f_muestreo = 50000;
 recObj = audiorecorder(f_muestreo,16,1);
 seconds = 110;
 
 
-disp('Start speaking.')
+disp('Start Recording.')
 recordblocking(recObj, seconds);
 disp('End of Recording.');
 
@@ -15,5 +15,6 @@ w=z;
 
 t = 0:1/f_muestreo:seconds-1/f_muestreo;
 plot(t,z)
+
 
 
